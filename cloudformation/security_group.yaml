@@ -1,0 +1,48 @@
+Parameters:
+  VPCNetworkStackName:
+    Description: Stack Name for previous Build Stack for VPC
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: ^[a-zA-Z][-a-zA-Z0-9]*$
+    Type: String
+
+Resources:
+  JumpServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: For jump server only, for SSH in private EC2
+      VpcId: 
+        Fn::ImportValue: !Sub "${VPCNetworkStackName}-VPC-ID"
+    
+  CombinedSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: For instances inside private subnets only
+      VpcId: 
+        Fn::ImportValue: !Sub "${VPCNetworkStackName}-VPC-ID"
+
+  SecurityGroupIngressJumpServer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref JumpServerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: 0.0.0.0/0
+  
+  SecurityGroupIngressComboSSH:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref CombinedSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !GetAtt JumpServerSecurityGroup.GroupId
+  SecurityGroupIngressComboSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref CombinedSecurityGroup
+      IpProtocol: -1  # All protocols
+      FromPort: -1     # All ports
+      ToPort: -1       # All ports
+      SourceSecurityGroupId: !GetAtt CombinedSecurityGroup.GroupId

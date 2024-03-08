@@ -1,0 +1,13 @@
+## Decrease the volume size
+
+1. Mount a volume 'abc' in instance eg 5GB (original)
+2. Mount another volume 'xyz' in instance of less size eg. 1GB
+
+3. permanetly mount both 'abc' and 'xyz'
+4. copy all the file of 'abc' to 'xyz'
+	- cp -r /abc /xyz
+
+5. Remove the mount line in /etc/fstab for volume 'abc'
+6. Reboot to unmount the vol 'abc' and delete it through AWS
+
+DONE REDUCING THE SIZE OF VOLUME
