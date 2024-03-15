@@ -13,8 +13,14 @@ The cfssl and cfssljson command line utilities will be used to provision a PKI I
 
 #### Linux
 
-    curl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64 -o ~/cfssl    
-    curl https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64 -o ~/cfssljson
+    wget -q --show-progress --https-only --timestamping \
+    https://github.com/cloudflare/cfssl/releases/download/v1.6.0/cfssl_1.6.0_linux_amd64  -O cfssl
+---
+    wget -q --show-progress --https-only --timestamping \
+    https://github.com/cloudflare/cfssl/releases/download/v1.6.0/cfssljson_1.6.0_linux_amd64 -O cfssljson
+
+
+
 
     chmod +x cfssl cfssljson
 
