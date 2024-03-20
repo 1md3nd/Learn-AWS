@@ -32,8 +32,9 @@ Extract and install the etcd server and the etcdctl command line utility:
 
 The instance internal IP address will be used to serve client requests and communicate with etcd cluster peers. Retrieve the internal IP address for the current compute instance:
 ##### Different for each controller
-    INTERNAL_IP=10.71.134.162
-
+```
+INTERNAL_IP=$(hostname -i)
+```
 Each etcd member must have a unique name within an etcd cluster. Set the etcd name to match the hostname of the current compute instance:
 
     ETCD_NAME=$(hostname -s)
@@ -41,7 +42,7 @@ Each etcd member must have a unique name within an etcd cluster. Set the etcd na
     echo $INTERNAL_IP $ETCD_NAME 
 
 
-![alt text](image-19.png)
+![alt text](img-ref/image-19.png)
 Create the etcd.service systemd unit file:
 ##### Same for each controller
 
@@ -95,4 +96,4 @@ Start the etcd Server
     --cert=/etc/etcd/kubernetes.pem \
     --key=/etc/etcd/kubernetes-key.pem
 
-![alt text](image-20.png)
+![alt text](img-ref/image-20.png)
