@@ -1,0 +1,169 @@
+  AWSTemplateFormatVersion: '2010-09-09'
+
+  Description: |
+    This CloudFormation template creates a DMS instance in a VPC,
+    Source and Target Endpoints, and a Data Migration Task to migrate from MySQL to Aurora MySQL.
+
+  Parameters:
+    Stage:
+      Type: String
+      Description: The deployment stage (dev, prod, prod-kube-001)
+      AllowedValues:
+        - dev
+        - prod
+        - prod-kube-001
+      Default: dev
+
+    DmsSecurityGroup:
+      Type: AWS::EC2::SecurityGroup::Id
+      Description: The security Group which have inbound rule to access the both databases.
+
+    SourceDbUsername:
+      Type: String
+      Description: Username for the source MySQL database
+
+    SourceDbPassword:
+      Type: String
+      NoEcho: true
+      Description: Password for the source MySQL database
+
+    SourceDbEndpoint:
+      Type: String
+      Description: Endpoint for the source MySQL database
+
+    SourceDbName:
+      Type: String
+      Description: Database name for the source MySQL database
+
+    TargetDbUsername:
+      Type: String
+      Description: Username for the target Aurora MySQL database
+
+    TargetDbPassword:
+      Type: String
+      NoEcho: true
+      Description: Password for the target Aurora MySQL database
+
+    TargetDbEndpoint:
+      Type: String
+      Description: Endpoint for the target Aurora MySQL database
+
+    ReplicationInstanceClass:
+      Type: String
+      Default: dms.t2.medium
+      Description: The replication instance class for DMS
+
+    AllocatedStorage:
+      Type: Number
+      Default: 100
+      Description: The allocated storage for the DMS instance
+    
+    SubnetIds:
+      Description: >
+            Subnets for DMS subnet group. Must contain at least two
+            subnets in two different Availability Zones in the same region.            
+      Type: List<AWS::EC2::Subnet::Id>
+
+  Resources:
+    DMSReplicationSubnetGroup :
+      Type: AWS::DMS::ReplicationSubnetGroup
+      Properties:
+          ReplicationSubnetGroupDescription: !Sub '${AWS::StackName} DMS Subnet Group'
+          ReplicationSubnetGroupIdentifier: !Sub '${AWS::StackName}-dms-subnet-group'
+          SubnetIds: !Ref SubnetIds
+          Tags:
+            - Key: Name
+              Value: !Sub '${AWS::StackName}-dms-subnet-group'
+
+    DMSReplicationInstance:
+      Type: AWS::DMS::ReplicationInstance
+      Properties:
+        ReplicationInstanceIdentifier: !Sub "${Stage}-replication-instance"
+        AllocatedStorage: !Ref AllocatedStorage
+        PubliclyAccessible: false
+        ReplicationSubnetGroupIdentifier: !Ref DMSReplicationSubnetGroup
+        ReplicationInstanceClass: !Ref ReplicationInstanceClass
+        Tags:
+          - Key: Application
+            Value: !Ref AWS::StackId
+        VpcSecurityGroupIds:
+          - !Ref DmsSecurityGroup
+
+    DMSSourceEndpoint:
+      Type: AWS::DMS::Endpoint
+      Properties:
+        EndpointIdentifier: !Sub "${Stage}-source-mysql-endpoint"
+        EndpointType: source
+        EngineName: mysql
+        ServerName: !Ref SourceDbEndpoint 
+        Password: !Ref SourceDbPassword
+        Username: !Ref SourceDbUsername
+        Port: 3306
+
+    DMSTargetEndpoint:
+      Type: AWS::DMS::Endpoint
+      Properties:
+        EndpointIdentifier: !Sub "${Stage}-target-aurora-mysql-endpoint"
+        EndpointType: target
+        EngineName: aurora
+        ServerName: !Ref TargetDbEndpoint
+        Password: !Ref TargetDbPassword
+        Username: !Ref TargetDbUsername
+        Port: 3306
+
+    DMSMigrationTask:
+      Type: AWS::DMS::ReplicationTask
+      Properties:
+        MigrationType: full-load
+        ReplicationInstanceArn: !Ref DMSReplicationInstance
+        ReplicationTaskIdentifier: !Sub "${Stage}-replication-task"
+        SourceEndpointArn: !Ref DMSSourceEndpoint
+        TargetEndpointArn: !Ref DMSTargetEndpoint
+        TableMappings: !Sub |
+          {
+            "rules": [
+              {
+                "rule-type": "selection",
+                "rule-id": "1",
+                "rule-name": "1",
+                "object-locator": {
+                  "schema-name": "${SourceDbName}",
+                  "table-name": "%"
+                },
+                "rule-action": "include",
+                "filters": []
+              }
+            ]
+          }
+        ReplicationTaskSettings: !Sub |
+          {
+            "FullLoadSettings": {
+              "TargetTablePrepMode": "DO_NOTHING",
+              "CreatePkAfterFullLoad": false,
+              "StopTaskCachedChangesApplied": false,
+              "StopTaskCachedChangesNotApplied": false,
+              "MaxFullLoadSubTasks": 8,
+              "TransactionConsistencyTimeout": 600,
+              "CommitRate": 10000
+            },
+            "Logging": {
+              "EnableLogging": true
+            }
+          }
+
+  Outputs:
+    ReplicationInstanceArn:
+      Description: DMS Replication Instance ARN
+      Value: !Ref DMSReplicationInstance
+
+    SourceEndpointArn:
+      Description: Source Endpoint ARN
+      Value: !Ref DMSSourceEndpoint
+
+    TargetEndpointArn:
+      Description: Target Endpoint ARN
+      Value: !Ref DMSTargetEndpoint
+
+    MigrationTaskArn:
+      Description: Migration Task ARN
+      Value: !Ref DMSMigrationTask
