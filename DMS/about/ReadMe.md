@@ -9,7 +9,7 @@ We create a source and target connection to tell AWS DMS where to extract the da
 Next, we run a schedule task that run on the DMS server, which will move the data.
 DMS creates tables, associate primary key (if not on target), we can create own target table schema.
 
-![high level DMS](./img-ref/dms-01.png)
+![high level DMS](../img-ref/dms-01.png)
 ### [Ref](https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html)
 
 

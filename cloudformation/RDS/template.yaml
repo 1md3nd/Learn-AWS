@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  This CloudFormation template creates a MySQL RDS instance and an Aurora MySQL cluster within a VPC.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The ID of the VPC
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: The IDs of the subnets for the RDS instances. Must be at least 2 subnets in different AZs.
+
+  MySQLDbUsername:
+    Type: String
+    Description: Username for the MySQL database
+
+  MySQLDbPassword:
+    Type: String
+    NoEcho: true
+    Description: Password for the MySQL database
+
+  AuroraDbUsername:
+    Type: String
+    Description: Username for the Aurora MySQL database
+
+  AuroraDbPassword:
+    Type: String
+    NoEcho: true
+    Description: Password for the Aurora MySQL database
+
+Resources:
+  MySQLSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for MySQL RDS
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: MySQLSecurityGroup
+
+  AuroraSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for Aurora MySQL
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: AuroraSecurityGroup
+
+  MySQLDBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: MySQLDBInstance
+      DBInstanceClass: db.t3.micro
+      Engine: mysql
+      MasterUsername: !Ref MySQLDbUsername
+      MasterUserPassword: !Ref MySQLDbPassword
+      AllocatedStorage: 20
+      VPCSecurityGroups:
+        - !Ref MySQLSecurityGroup
+      DBSubnetGroupName: !Ref MySQLDBSubnetGroup
+
+  MySQLDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for MySQL RDS instance
+      SubnetIds: !Ref SubnetIds
+
+  AuroraDBCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora-mysql
+      MasterUsername: !Ref AuroraDbUsername
+      MasterUserPassword: !Ref AuroraDbPassword
+      DBSubnetGroupName: !Ref AuroraDBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref AuroraSecurityGroup
+
+  AuroraDBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref AuroraDBCluster
+      DBInstanceClass: db.t3.medium
+      Engine: aurora-mysql
+      DBInstanceIdentifier: AuroraDBInstance
+
+  AuroraDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Aurora MySQL cluster
+      SubnetIds: !Ref SubnetIds
+
+Outputs:
+  MySQLDBInstanceEndpoint:
+    Description: The endpoint of the MySQL RDS instance
+    Value: !GetAtt MySQLDBInstance.Endpoint.Address
+
+  AuroraDBClusterEndpoint:
+    Description: The endpoint of the Aurora MySQL cluster
+    Value: !GetAtt AuroraDBCluster.Endpoint.Address
